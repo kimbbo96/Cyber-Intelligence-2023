@@ -14,13 +14,13 @@ PUT cve
 			},
 			"summaryText": {
 				"type": "text",
-        "fielddata": true,
-				 "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        			"fielddata": true,
+				"fields": {
+			        	"keyword": {
+			            		"type": "keyword",
+			            		"ignore_above": 256
+			          	}
+			        }
 			},
 			"softwareType": {
 				"type": "keyword"
