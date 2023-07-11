@@ -14,23 +14,6 @@ import calendar
 import json
 
 
-cveIDNumber=[]
-summaryText=[]
-publishDate=[]
-softwareType=[]
-vendor=[]
-product=[]
-version=[]
-cvssScore=[]
-confidentialityImpact=[]
-integrityImpact=[]
-availibilityImpact=[]
-accessComplexity=[]
-authentication=[]
-gainedAccess=[]
-vulnType=[]
-exploitAvailible=[]
-
 confidentialityImpactTup=('Complete','None','Partial')
 integrityImpactTup=('Complete','None','Partial')
 availibilityImpactTup=('Complete','None','Partial')
@@ -74,106 +57,92 @@ def getCVEPages(soup):
             cveIDPages.append("http://www.cvedetails.com/"+str(link['href']))
     
     return cveIDPages
-'''
-def getCVEDetails(cveID):
-    url="http://www.cvedetails.com/cve/"+cveID
-    soup=getSoupHTML(url)
-'''
+
 def getCVEDetails(cveid=''):
+    CVEDict ={}
     cveUrl='http://www.cvedetails.com/cve/'+cveid+'/'
     response = requests.get(cveUrl)
     cveHtml=response.content
     soup = BeautifulSoup(cveHtml,"html.parser")
     if soup =='':
-        return
-    cveIDNumber.append(cveid)
+        return None
+    CVEDict["cveIDNumber"] = cveid
     table = soup.find(id='vulnprodstable')
     cvssTable = soup.find(id='cvssscorestable')
     summarySoup=soup.find('div',class_="cvedetailssummary")
-    summaryText.append(summarySoup.text.split("\n")[1])
+    CVEDict["summaryText"] = summarySoup.text.split("\n")[1].strip()
     dateStr=summarySoup.text.split("\n")[3]
-    publishDate.append(dateStr.split("\t")[1 ].split(":")[1])
+    split1 = dateStr.split("\t")
+    if len(split1) < 2:
+        return None
+    split2 = split1[1].split(":")
+    if len(split2) < 2:
+        return None
+    CVEDict["publishDate"] = split2[1].strip()
+    
     productData=[]
 
     for row in table.findAll('tr')[::-1]: #Get only the last row
         cols=row.findAll('td')
         for i in range(len(cols)):
-            productData.append(cols[i].text.strip())    
-    softwareType.append(productData[1])
-    vendor.append(productData[2])
-    product.append(productData[3])
-    version.append(productData[4])
+            productData.append(cols[i].text.strip())   
+    
+    if len(productData) < 9: 
+        return None  
+    
+    CVEDict["softwareType"] = productData[1].strip()
+    CVEDict["vendor"] = productData[2].strip()
+    CVEDict["product"] = productData[3].strip()
+    CVEDict["version"] = productData[4].strip()
     cvssData=[]
     for row in cvssTable.findAll('tr'): #Get only the first row
         cols=row.findAll('td')
         for i in range(len(cols)):
             cvssData.append(cols[i].text.strip())           
-    #pprint.pprint(cvssData)
-    cvssScore.append(cvssData[0])
+    CVEDict["cvssScore"] = cvssData[0]
     ci=cvssData[1].split("\n")[0]
-    confidentialityImpact.append(ci)
+    CVEDict["confidentialityImpact"] = ci.strip()
     ii=cvssData[2].split("\n")[0]
-    integrityImpact.append(ii)
+    CVEDict["integrityImpact"] = ii.strip()
     ai=cvssData[3].split("\n")[0]
-    availibilityImpact.append(ai)
+    CVEDict["availibilityImpact"] = ai.strip()
     ac=cvssData[4].split("\n")[0]
-    accessComplexity.append(ac)
+    CVEDict["accessComplexity"] = ac.strip()
     ar=cvssData[5].split("\n")[0]
-    authentication.append(ar)
+    CVEDict["authentication"] = ar.strip()
     al=cvssData[6].split("\n")[0]
-    gainedAccess.append(al)
-    vulnType.append(cvssData[7])
+    CVEDict["gainedAccess"] = al.strip()
+    CVEDict["vulnType"] = cvssData[7].strip()
 
-def writeToExcel(fileName=''):
-    print ("Writing to Excel File : "+fileName)
-    data = {'CVE ID Number': cveIDNumber, 'Summary Text': summaryText, 'Publish Date': publishDate, 'Software Type': softwareType, 'Vendor': vendor,'Product':product,'Version':version,'CVSS Score':cvssScore,'Confidentiality Impact':confidentialityImpact,'Integrity Impact':integrityImpact,'Availibility Impact':availibilityImpact,'Access Complexity':accessComplexity,'Authentication':authentication,'Gained Access':gainedAccess,'Vulnerability Type':vulnType}
-    print("DATA \n",data)
-    df = pd.DataFrame(data,columns=['CVE ID Number','Publish Date', 'Software Type','Vendor','Product','Version','CVSS Score','Confidentiality Impact','Integrity Impact','Availibility Impact','Access Complexity','Authentication','Gained Access','Vulnerability Type','Summary Text'])
-    writer = ExcelWriter(fileName)
-    df.to_excel(writer,'CVE Details',index=False)
-    writer.save()
-    print ("Completed.")
-
-def convertToJSON():
-    data = [cveIDNumber, summaryText, publishDate, softwareType, vendor, product, version, cvssScore, confidentialityImpact, integrityImpact, availibilityImpact, accessComplexity, authentication, gainedAccess, vulnType]
-    CVEDict ={}
-    for i in range(len(data[0])):
-      key = cveIDNumber[i]
-      value = {"summaryText":summaryText[i], "publishDate":publishDate[i], "softwareType":softwareType[i], "vendor":vendor[i], "product":product[i  ], "version": version[i], "cvssScore":cvssScore[i], "confidentialityImpact": confidentialityImpact[i], "integrityImpact":integrityImpact[i], "availibilityImpact":availibilityImpact[i], "accessComplexity":accessComplexity[i], "authentication":authentication[i], "gainedAccess":gainedAccess[i], "vulnType":vulnType[i]   }
-      CVEDict[key]=value
-    #print ("CVEDict: ", CVEDict)
     return CVEDict
     
     
 def main():
     args = parse_arguments()
-    if args.m:
-        month=args.m    
     if args.y:
         year=args.y
     if args.smin:
         smin=args.smin
     if args.smax:
         smax=args.smax
-    fileName="Security_Advisory_"+calendar.month_name[int(month)]+"_"+str(year)+".xlsx"
-    fullUrl=createFullUrl(1,6,2023,2,1)
-    #print (fullUrl)
-    soupObject=getSoupHTML(fullUrl)
-    cvePagesArray=getCVEPages(soupObject)
-    cveArray=[]
-    for cvePage in cvePagesArray:
-        #print cvePage
-        soupObject=getSoupHTML(cvePage)
-        getCVEIds(soupObject,cveArray)
+        
+    for n in range(12):
+        fullUrl=createFullUrl(smin,smax,year,n+1,1)
+        soupObject=getSoupHTML(fullUrl)
+        cvePagesArray=getCVEPages(soupObject)
+        cveArray=[]
+        for cvePage in cvePagesArray:
+            soupObject=getSoupHTML(cvePage)
+            getCVEIds(soupObject,cveArray)
+        
+        count=0
+        for cve in cveArray:
+            my_dict = getCVEDetails(cve)
+            count=count+1
+            if my_dict != None:
+                print(json.dumps(my_dict))
     
-    count=0
-    for cve in cveArray:
-        getCVEDetails(cve)
-        count=count+1
-        #print ("Getting Details for CVE ID: "+cve+". Completed "+str(count)+" Out of "+str(len(cveArray)))
-    
-    #writeToExcel(fileName)
-    print(json.dumps(convertToJSON()))
 if __name__ == '__main__':
     status = main()
     sys.exit(status)
+    
