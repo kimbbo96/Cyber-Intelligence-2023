@@ -1,0 +1,60 @@
+PUT cve
+{
+	"mappings": {
+		"properties": {
+		  "cveIDNumber": {
+				"type": "keyword"
+			},
+			"publishDate": {
+				"type": "date",
+				"format": "yyyy-MM-dd"
+			},
+			"cvssScore": {
+				"type": "double"
+			},
+			"summaryText": {
+				"type": "text",
+        "fielddata": true,
+				 "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+			},
+			"softwareType": {
+				"type": "keyword"
+			},
+			"vendor": {
+				"type": "keyword"
+			},
+			"product": {
+				"type": "keyword"
+			},
+			"version": {
+				"type": "keyword"
+			},
+			"confidentialityImpact": {
+				"type": "keyword"
+			},
+			"integrityImpact": {
+				"type": "keyword"
+			},
+			"availibilityImpact": {
+				"type": "keyword"
+			},
+			"accessComplexity": {
+				"type": "keyword"
+			},
+			"authentication": {
+				"type": "keyword"
+			},
+			"gainedAccess": {
+				"type": "keyword"
+			},
+			"vulnType": {
+				"type": "keyword"
+			}
+		}
+	}
+}
