@@ -4,13 +4,8 @@
 # CVE-ID,Severity,Product,Vendor,Summary (Primary required fields, many additional fields shall be present)
 
 from bs4 import BeautifulSoup
-import requests,pprint,sys,datetime,re
+import requests,sys,datetime,re
 from argparse import ArgumentParser
-import requests,pprint,csv,os,datetime,re,urllib.request
-import pandas as pd
-from pandas import ExcelWriter
-from pandas import ExcelFile
-import calendar
 import json
 
 
@@ -24,8 +19,9 @@ accessLevelGainedTup=('None','Admin') #What is the access Level gained by exploi
 def parse_arguments(): # Function for parsing command line arguments
     parser = ArgumentParser(description='A small python script used for scraping the CVE Details website for collating the following information'+'\n'+'# CVE-ID,Severity,Product,Vendor,Summary (Primary required fields, many additional fields shall be present)')
     parser.add_argument('-smin',help='Minimum Severity Rating',default=7)
-    parser.add_argument('-smax',help='Minimum Severity Rating',default=10)
-    parser.add_argument('-m',help='Month in Number viz 1-12',default=datetime.date.today().month)
+    parser.add_argument('-smax',help='Maximum Severity Rating',default=10)
+    parser.add_argument('-mmin',help='Minimum Month in Number viz 1-12',default=datetime.date.today().month)
+    parser.add_argument('-mmax',help='Maximum Month in Number viz 1-12',default=datetime.date.today().month)
     parser.add_argument('-y',help='Year in YYYY',default=datetime.date.today().year)
     args=parser.parse_args()
     return args
@@ -47,7 +43,7 @@ def getCVEIds(soup,cveArray):
         m = re.search("CVE-\d{4}-\d{4,7}",a['href'])
         if m:
             cveArray.append(m.group(0))
-        
+
 def getCVEPages(soup):
     cveIDPages=[]
     items=soup.find_all('div',class_="paging")
@@ -55,7 +51,7 @@ def getCVEPages(soup):
         links=item.find_all('a')
         for link in links:
             cveIDPages.append("http://www.cvedetails.com/"+str(link['href']))
-    
+
     return cveIDPages
 
 def getCVEDetails(cveid=''):
@@ -79,17 +75,17 @@ def getCVEDetails(cveid=''):
     if len(split2) < 2:
         return None
     CVEDict["publishDate"] = split2[1].strip()
-    
+
     productData=[]
 
     for row in table.findAll('tr')[::-1]: #Get only the last row
         cols=row.findAll('td')
         for i in range(len(cols)):
-            productData.append(cols[i].text.strip())   
-    
-    if len(productData) < 9: 
-        return None  
-    
+            productData.append(cols[i].text.strip())
+
+    if len(productData) < 9:
+        return None
+
     CVEDict["softwareType"] = productData[1].strip()
     CVEDict["vendor"] = productData[2].strip()
     CVEDict["product"] = productData[3].strip()
@@ -98,7 +94,7 @@ def getCVEDetails(cveid=''):
     for row in cvssTable.findAll('tr'): #Get only the first row
         cols=row.findAll('td')
         for i in range(len(cols)):
-            cvssData.append(cols[i].text.strip())           
+            cvssData.append(cols[i].text.strip())
     CVEDict["cvssScore"] = cvssData[0]
     ci=cvssData[1].split("\n")[0]
     CVEDict["confidentialityImpact"] = ci.strip()
@@ -115,9 +111,10 @@ def getCVEDetails(cveid=''):
     CVEDict["vulnType"] = cvssData[7].strip()
 
     return CVEDict
-    
-    
+
+
 def main():
+
     args = parse_arguments()
     if args.y:
         year=args.y
@@ -125,24 +122,27 @@ def main():
         smin=args.smin
     if args.smax:
         smax=args.smax
-        
-    for n in range(12):
-        fullUrl=createFullUrl(smin,smax,year,n+1,1)
+    if args.mmin:
+        month_min=int(args.mmin)
+    if args.mmax:
+        month_max=int(args.mmax)
+
+    for n in range(month_min,month_max+1):
+        fullUrl=createFullUrl(smin,smax,year,n,1)
         soupObject=getSoupHTML(fullUrl)
         cvePagesArray=getCVEPages(soupObject)
         cveArray=[]
         for cvePage in cvePagesArray:
             soupObject=getSoupHTML(cvePage)
             getCVEIds(soupObject,cveArray)
-        
+
         count=0
         for cve in cveArray:
             my_dict = getCVEDetails(cve)
             count=count+1
             if my_dict != None:
                 print(json.dumps(my_dict))
-    
+
 if __name__ == '__main__':
     status = main()
     sys.exit(status)
-    
